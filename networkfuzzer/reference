@@ -30,3 +30,9 @@ D-Link DIR-600M Wireless N 150 - Authentication Bypass
 login.cgi on D-Link DIR-600M devices with firmware 3.04 allows remote attackers to bypass authentication
 https://www.exploit-db.com/exploits/42039/
 ᐧ
+---------------------------------------------------------------------------------------------------
+//fuzzer 소스 참고 사이트
+https://github.com/0xd012/wifuzzit
+
+
+https://www.blackhat.com/presentations/bh-europe-07/Butti/Presentation/bh-eu-07-Butti.pdf
