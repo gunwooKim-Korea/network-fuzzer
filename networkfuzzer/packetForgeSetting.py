@@ -58,7 +58,6 @@ listen_interval : LEShortField         = (200)
 import sys
 from scapy.all import *
 
-
 class Dot11EltRates(Packet):
     """ Our own definition for the supported rates field """
     name = "802.11 Rates Information Element"
@@ -75,39 +74,89 @@ def packet_handler(pkt) :
     if pkt.haslayer(Dot11):
         # do your stuff here
         print(pkt.show())
+
 #authPacket
-#90:9F:33:E7:BF:39 KUAP
-#88:36:6C:33:AD:7C gggg
+KUAP = "90:9F:33:E7:BF:38"
+gggg = "88:36:6C:33:AD:7C"
 
-#90:9F:33:0D:5F:D9 wlx909f330d5fd9
-#A0:D3:7A:21:17:1D wlp1s0
+wlx909f330d5fd9 = "90:9F:33:0D:5F:D9"
+wlp1s0 = "A0:D3:7A:21:17:1D"
 
-dstAddr = '90:9F:33:E7:BF:39'
-srcAddr = '90:9F:33:0D:5F:D9'
-fdstAddr = '90:9F:33:E7:BF:39'
+Broadcast = "FF:FF:FF:FF:FF:FF"
 
-a = Dot11(type=00,\
-          subtype=1011,\
-          proto=4,\
-          FCfield="to-DS",\
+#wlx->kuap->wlp
+
+authhead = Dot11(type=0,\
+          subtype=11,\
+          proto=1,\
+          FCfield='to-DS',\
           ID=1,\
-          addr1=dstAddr,\
-          addr2=srcAddr,\
-          addr3=fdstAddr)
-b = Dot11Auth(algo=128,seqnum=1)
+          addr1=wlp1s0,\
+          addr2=KUAP, \
+          addr3=KUAP,\
+          SC=123)
+authbody = Dot11Auth(algo=128,seqnum=1)
 
-c = Dot11Elt(ID="SSID",info=RandString(RandNum(1,50)))/\
-Dot11Elt(ID="Rates",info='\x82\x84\x0b\x16')/\
-Dot11Elt(ID="DSset",info="\x03")/\
+prbhead = Dot11(type=0,\
+                subtype=4,\
+                proto=0,\
+                FCfield=0,\
+                addr1=wlp1s0,\
+                addr2=KUAP,\
+                addr3=Broadcast,\
+                SC=3000)
+
+c = Dot11Elt(ID="SSID",info="KUAP")/\
+Dot11Elt(ID="Rates",info='\x82\x84\x0b\x16\x0c\x12\x18\x24')/\
+Dot11Elt(ID="DSset",info="\x03\x48\x60\x6c")/\
 Dot11Elt(ID="TIM",info="\x00\x01\x00\x00")
 
-d = Dot11EltRates()
-packet = a/b/('a'*500)
-t = fuzz(packet)
-#packet.show()
-t.show()
-result = srp(t)
+c2 = Dot11Elt(ID="SSID",info="")/\
+Dot11Elt(ID="Rates",info='\x82\x84\x0b\x16\x0c\x12\x18\x24')/\
+Dot11Elt(ID="ESRates",info="\x03\x48\x60\x6c")
+#Dot11Elt(ID="HT Capabilites",info="\x00\x01\x00\x00")
 
+tmp = "000018002e4000a02008000000026c09\
+a000cb000000cb0040000000ffffffff\
+ffffa0d37a21171dffffffffffff2028\
+0000010802040b160c12182432043048\
+606c2d1a621117ff0000000000000000\
+0096000100000000000000000000"
+
+hex = codecs.getdecoder("hex_codec")
+s = hex(tmp)[0]
+
+#radio = "\x00\x00\x18\x00\x2e\x40\x00\xa0\x20\x08\x00\x00\x00\x02\x6c\x09\xa0\x00\xcb\x00\x00\x00\xcb\x00"
+HT = hex("2d1a621117ff00000000000000000096000100000000000000000000")[0]
+HT = hex("2d1a621117ff00000000000000000096000100000000000000000000")[0]
+radio = hex("000018002e4000a02008000000026c09a000cb000000cb00")[0]
+
+radioHead = RadioTap(\
+    version=0,\
+    pad=0,\
+    len=24,\
+    flags=1,\
+    rate=1,\
+    tsft=0,\
+    dbm_antsignal = 1,\
+    dbm_antnoise=0,\
+    lock_quality=0,\
+    tx_attenuation=0,\
+    db_tx_attenuation=0,\
+    dbm_tx_power=0,\
+    antenna=0,\
+    db_antsignal=0,\
+    db_antnoise=0)
+
+d = Dot11EltRates()
+authPacket = authhead/authbody
+
+prbhead = radio/prbhead/c2/HT
+
+#authPacket.show()
+prbhead.show()
+result = sendp(prbhead, iface='wlp1s0')
+wireshark(prbhead)
 if result:
     print("+-------- Receiving Packet INFO")
     ans,unans=result
