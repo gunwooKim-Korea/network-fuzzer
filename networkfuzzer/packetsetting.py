@@ -2,7 +2,7 @@
 
 
 import sys
-from socket import *
+import socket
 from scapy.all import *
 
 #                     FlagsField('present', None, -64,
@@ -17,9 +17,11 @@ from scapy.all import *
 #                                 'dB_AntNoise', 'dB_AntSignal', 'Antenna', 'dBm_TX_Power',
 #                                 'dB_TX_Attenuation', 'TX_Attenuation', 'Lock_Quality', 'dBm_AntNoise', 'dBm_AntSignal',
 #                                 'FHSS', 'Channel', 'Rate', 'Flags', 'TSFT']),
+from scapy.layers.dot11 import Dot11AssoReq
+
 
 class RadioTap2(Packet):
-    name = "RadioTap2 dummy"
+    name = "RadioTap dummy"
     fields_desc = [ ByteField('version', 0),
                     ByteField('pad', 0),
                     FieldLenField('len', None, 'notdecoded', '<H', adjust=lambda pkt,x:x+8),
@@ -47,11 +49,14 @@ class RadioTap2(Packet):
                     ByteField('Antenna', 0),
                     StrLenField('notdecoded', "", length_from= lambda pkt:pkt.len-8)]
 
+bind_layers(RadioTap2, Dot11, )
+
 def packet_handler(pkt) :
+    print("dha?")
     # if packet has 802.11 layer
     if pkt.haslayer(Dot11):
         # do your stuff here
-        print(pkt.show())
+        pkt.show()
 
 #authPacket
 KUAP = "90:9F:33:E7:BF:38"
@@ -61,13 +66,27 @@ wlx909f330d5fd9 = "90:9F:33:0D:5F:D9"
 wlp1s0 = "A0:D3:7A:21:17:1D"
 
 Broadcast = "FF:FF:FF:FF:FF:FF"
-kitri = "90:9F:33:D6:F1:82"
+KITRI09_5G = "90:9F:33:D6:F1:82"
+KITRI09 = "90:9F:33:D6:F1:80"
 #wlx->kuap->wlp
 
 
 DA = KUAP
 SA = wlp1s0
-BSSId = KUAP
+BSSId = Broadcast
+
+radiohead = RadioTap2(\
+    version=0,\
+    pad=0,\
+    len=24,\
+    present=4294967296*775946400+537395200,\
+    flags=0,\
+    DataRate=2,\
+    Channel_freq=27657,
+    Channel_flags=160,\
+    SSIsignal1=203,\
+    RX_Flags=0,\
+    SSIsignal2=203)
 
 authhead = Dot11(type=0,\
           subtype=11,\
@@ -90,54 +109,98 @@ prbhead = Dot11(type=0,\
                 SC=300)
 
 hex = codecs.getdecoder("hex_codec")
-HT = hex("2d1a621117ff00000000000000000096000100000000000000000000")[0]
+HTauth = hex("2d1a621117ff00000000000000000096000100000000000000000000")[0]
 
-elt = Dot11Elt(ID="SSID",info="KITRI_5G")/\
+prbelt = Dot11Elt(ID="SSID",info="KUAP")/\
 Dot11Elt(ID="Rates",info='\x02\x04\x0b\x16\x0c\x12\x18\x24')/\
-Dot11Elt(ID="ESRates",info="\x30\x48\x60\x6c")/HT
+Dot11Elt(ID="ESRates",info="\x30\x48\x60\x6c")/HTauth
 
 
-#radio = "\x00\x00\x18\x00\x2e\x40\x00\xa0\x20\x08\x00\x00\x00\x02\x6c\x09\xa0\x00\xcb\x00\x00\x00\xcb\x00"
+DA = KUAP
+SA = wlp1s0
+BSSId = Broadcast
 
-radio = hex("000018002e4000a02008000000026c09a000cb000000cb00")[0]
-
-#4294967295, 775946400, 537395200
-#'Flags+Rate+Channel+dBm_AntSignal+RX_Flags+Reset+Ext+dBm_AntSignal2+Antenna2',\
-radioHead2 = RadioTap2(\
-    version=0,\
-    pad=0,\
-    len=24,\
-    present=4294967296*775946400+537395200,\
-    flags=0,\
-    DataRate=2,\
-    Channel_freq=27657,
-    Channel_flags=160,\
-    SSIsignal1=203,\
-    RX_Flags=0,\
-    SSIsignal2=203)
-
-# prbreq = prbhead/Dot11ProbeReq()/elt/('a'*100)#/elt/('a'*100)
-# prbreq.show()
-# hexdump(prbreq)
-
-# s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
-
-#
-# for i in range(1000000) :
-#     s.sendto(radio, ("192.168.0.1", 0))
+HTasso = hex("2d1a661117ff00000000000000000096000100000000000000000000")[0]
+EXC = hex("7f080400000000000040")[0]
 
 
-# wireshark(prbreq)
-authPacket = radioHead2/authhead/authbody#/('a'*1000)
+assohead = Dot11(
+    type=0,\
+    subtype=0,\
+    proto=1,\
+    FCfield=0,\
+    addr1=DA,\
+    addr2=wlp1s0,\
+    addr3=DA,\
+    ID=315,\
+    SC=80)
 
-hexdump(authPacket)
-# wireshark(authPacket)
-#
-authPacket.show()
-# prbhead.show()
-result = sr(authPacket, iface="wlx909f330d5fd9")
+assobody = Dot11AssoReq(
+        cap=8452,\
+        listen_interval=10)
+
+assoelt = Dot11Elt(ID="SSID",info="KUAP")/\
+Dot11Elt(ID="Rates",info='\x02\x04\x0b\x16\x0c\x12\x18\x24')/\
+Dot11Elt(ID="ESRates",info="\x30\x48\x60\x6c")/HTasso/EXC/\
+Dot11Elt(ID="vendor", info="\x00\x50\xf2\x02\x00\x01\x00")
+
+prbPacket = radiohead/prbhead/Dot11ProbeReq()/prbelt
+authPacket = radiohead/authhead/authbody
+assoPacket = radiohead/assohead/assobody/assoelt
+
+hexdump(prbPacket)
+# wireshark(prbPacket)
+# wlp1s0
+# wlx909f330d5fd9
+
+result = sendp(prbPacket, iface="wlx909f330d5fd9", verbose=3)
+print("1")
 
 if result:
     print("+-------- Receiving Packet INFO")
-    ans,unans=result
+    ans, unans = result
     ans.summary()
+    print("3")
+result = sendp(prbPacket, iface="wlx909f330d5fd9", verbose=3, count=100)
+sniff(iface="wlx909f330d5fd9", prn=packet_handler)
+
+# if result:
+#     print("+-------- Receiving Packet INFO")
+#     ans, unans = result
+#     ans.summary()
+#     print("3")
+# print("2")
+# rersult = srp(authPacket, iface="wlx909f330d5fd9", verbose=1)
+# if result:
+#     print("+-------- Receiving Packet INFO")
+#     ans, unans = result
+#     ans.summary()
+#
+# for i in range(100):
+#     result = srp(assoPacket, iface="wlx909f330d5fd9", verbose=1)
+#
+#     if result:
+#         print("+-------- Receiving Packet INFO")
+#         ans, unans = result
+#         ans.summary()
+
+# result = sendp(prbPacket, iface="wlp1s0", verbose=1)
+# result = sendp(authPacket, iface="wlp1s0", verbose=1)
+# result = sendp(assoPacket, iface="wlp1s0", verbose=1)
+
+
+
+    # s = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ALL))
+    # s.bind(("wlp1s0", ETH_P_ALL))
+    # for i in range(100):
+    # s.send(auth, ETH_P_ALL)
+    # revpacket = s.recv(2048)[0]
+    # print("4")
+    # print(revpacket)
+    # print("5")
+    #
+    # for i in range(1000000) :
+    #     s.sendto(radio, ("192.168.0.1", 0))
+# tmp = hex("000018002e4000a02008000000026c09a000dd000000dd0040000000ffffffffffffa0d37a21171dffffffffffff80080000010802040b160c12182432043048606c2d1a621117ff00000000000000000096000100000000000000000000")[0]
+# tmp2 = hex("6c09a000dd000000dd0040000000ffffffffffffa0d37a21171dffffffffffff80080000010802040b160c12182432043048606c2d1a621117ff00000000000000000096000100000000000000000000")[0]
+# auth = hex("000018002e4000a02008000000026c09a000df000000df00b0003a01909f33e7bf38a0d37a21171d909f33e7bf387000000001000000")[0]
