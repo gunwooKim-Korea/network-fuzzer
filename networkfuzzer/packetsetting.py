@@ -51,28 +51,28 @@ class RadioTap2(Packet):
 
 bind_layers(RadioTap2, Dot11, )
 
-def packet_handler(pkt) :
-    print("dha?")
-    # if packet has 802.11 layer
-    if pkt.haslayer(Dot11):
-        # do your stuff here
-        pkt.show()
+KUAP = "90:9f:33:e7:bf:38"
+gggg = "88:36:6c:33:ad:7c"
 
-#authPacket
-KUAP = "90:9F:33:E7:BF:38"
-gggg = "88:36:6C:33:AD:7C"
+wlx909f330d5fd9 = "90:9f:33:0d:5f:d9"
+wlp1s0 = "a0:d3:7a:21:17:1d"
 
-wlx909f330d5fd9 = "90:9F:33:0D:5F:D9"
-wlp1s0 = "A0:D3:7A:21:17:1D"
-
-Broadcast = "FF:FF:FF:FF:FF:FF"
+Broadcast = "ff:ff:ff:ff:ff:ff"
 KITRI09_5G = "90:9F:33:D6:F1:82"
 KITRI09 = "90:9F:33:D6:F1:80"
+
+def packet_handler(pkt) :
+    # if packet has 802.11 layer
+    if pkt.haslayer(Dot11):
+        dot11 = pkt.getlayer(Dot11)
+        if dot11.subtype == 5 and dot11.addr2 == KUAP and dot11.addr1 == wlp1s0:
+            print("come resp !")
+
 #wlx->kuap->wlp
 
 
 DA = KUAP
-SA = wlp1s0
+SA = wlx909f330d5fd9
 BSSId = Broadcast
 
 radiohead = RadioTap2(\
@@ -148,27 +148,23 @@ prbPacket = radiohead/prbhead/Dot11ProbeReq()/prbelt
 authPacket = radiohead/authhead/authbody
 assoPacket = radiohead/assohead/assobody/assoelt
 
-hexdump(prbPacket)
+# hexdump(prbPacket)
 # wireshark(prbPacket)
 # wlp1s0
 # wlx909f330d5fd9
 
-result = sendp(prbPacket, iface="wlx909f330d5fd9", verbose=3)
-print("1")
+# result = srp(prbPacket, iface="wlx909f330d5fd9", verbose=1)
+
+sendp(authPacket, iface="wlx909f330d5fd9", verbose=1, count=100)
+
+result = srp(authPacket, iface="wlx909f330d5fd9", verbose=1)
+
+# sniff(iface="wlx909f330d5fd9", prn=packet_handler)
 
 if result:
     print("+-------- Receiving Packet INFO")
     ans, unans = result
     ans.summary()
-    print("3")
-result = sendp(prbPacket, iface="wlx909f330d5fd9", verbose=3, count=100)
-sniff(iface="wlx909f330d5fd9", prn=packet_handler)
-
-# if result:
-#     print("+-------- Receiving Packet INFO")
-#     ans, unans = result
-#     ans.summary()
-#     print("3")
 # print("2")
 # rersult = srp(authPacket, iface="wlx909f330d5fd9", verbose=1)
 # if result:
