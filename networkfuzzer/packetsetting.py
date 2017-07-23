@@ -1,6 +1,4 @@
 #-*- coding: utf-8 -*-
-
-
 import sys
 import socket
 from scapy.all import *
@@ -18,7 +16,6 @@ from scapy.all import *
 #                                 'dB_TX_Attenuation', 'TX_Attenuation', 'Lock_Quality', 'dBm_AntNoise', 'dBm_AntSignal',
 #                                 'FHSS', 'Channel', 'Rate', 'Flags', 'TSFT']),
 from scapy.layers.dot11 import Dot11AssoReq
-
 
 class RadioTap2(Packet):
     name = "RadioTap dummy"
@@ -54,8 +51,8 @@ bind_layers(RadioTap2, Dot11, )
 KUAP = "90:9f:33:e7:bf:38"
 gggg = "88:36:6c:33:ad:7c"
 
-wlx909f330d5fd9 = "90:9f:33:0d:5f:d9"
-wlp1s0 = "a0:d3:7a:21:17:1d"
+wlx909f330d5fd9 = "90:9f:33:0d:5f:d9" #LAN card can be monitor mode
+wlp1s0 = "a0:d3:7a:21:17:1d" #LAN card embeded laptop
 
 Broadcast = "ff:ff:ff:ff:ff:ff"
 KITRI09_5G = "90:9F:33:D6:F1:82"
@@ -145,7 +142,7 @@ Dot11Elt(ID="ESRates",info="\x30\x48\x60\x6c")/HTasso/EXC/\
 Dot11Elt(ID="vendor", info="\x00\x50\xf2\x02\x00\x01\x00")
 
 prbPacket = radiohead/prbhead/Dot11ProbeReq()/prbelt
-authPacket = radiohead/authhead/authbody
+authPacket = radiohead/authhead/authbody#/('a'*100)
 assoPacket = radiohead/assohead/assobody/assoelt
 
 # hexdump(prbPacket)
@@ -155,12 +152,11 @@ assoPacket = radiohead/assohead/assobody/assoelt
 
 # result = srp(prbPacket, iface="wlx909f330d5fd9", verbose=1)
 
-sendp(authPacket, iface="wlx909f330d5fd9", verbose=1, count=100)
-
-result = srp(authPacket, iface="wlx909f330d5fd9", verbose=1)
+# sendp(authPacket, iface="wlx909f330d5fd9", verbose=1, count=100)
+result = srp(authPacket, verbose=3, iface="wlx909f330d5fd9")
 
 # sniff(iface="wlx909f330d5fd9", prn=packet_handler)
-
+print("1")
 if result:
     print("+-------- Receiving Packet INFO")
     ans, unans = result
