@@ -69,9 +69,9 @@ def mutate_packet(pkt, state):
 
     mutateDot11Body = pkt.getlayer(Dot11)
     mutateDot11Body.proto = np.random_integers(0, 256 ** 2 - 1, 1)[0]
-    mutateDot11Body.FCfield = np.random_integers(0, 256 - 1, 1)[0]
     mutateDot11Body.ID = np.random_integers(0, 256 ** 2 - 1, 1)[0]
-    mutateDot11Body.SC = np.random_integers(0, 256 ** 2 - 1, 1)[0]
+    mutateDot11Body.FCfield = np.random_integers(0, 256 - 1, 1)[0] | b'1000'
+    mutateDot11Body.SC = np.random_integers(0, 256 ** 2 - 1, 1)[0] & b'1111111111110000'
 
     returnPkt = None
     if (state == 0):
