@@ -69,8 +69,8 @@ def mutate_packet(pkt, state):
 
     mutateDot11Body = pkt.getlayer(Dot11)
     mutateDot11Body.proto = np.random_integers(0, 256 ** 2 - 1, 1)[0]
-    mutateDot11Body.ID = np.random_integers(0, 256 ** 2 - 1, 1)[0]
     mutateDot11Body.FCfield = np.random_integers(0, 256 - 1, 1)[0]
+    mutateDot11Body.ID = np.random_integers(0, 256 ** 2 - 1, 1)[0]
     mutateDot11Body.SC = np.random_integers(0, 256 ** 2 - 1, 1)[0]
 
     returnPkt = None
@@ -98,6 +98,7 @@ def mutate_packet(pkt, state):
     # returnPkt.show()
     return returnPkt
 
+triger=False
 KUAP = "90:9f:33:e7:bf:38"
 gggg = "88:36:6c:33:ad:7c"
 
@@ -131,9 +132,12 @@ def packet_handler(pkt) :
                 if state == 1 and dot11.subtype == 11:
                     state = 2
                     alive = True
-                if state == 2 and dot11.subtype == 13:
+                if state == 2 and (dot11.subtype == 13):
                     state = 3
                     alive = True
+        elif triger and dot11.type == 1 and state == 2 and  (dot11.subtype == 13):
+            state = 3
+            alive = True
 
 def packetSetting(state) :
     DA = KUAP
@@ -179,13 +183,12 @@ def packetSetting(state) :
 
     hex = codecs.getdecoder("hex_codec")
     HTprb = hex("2d1a6e1117ff00000000000000000096000100000000000000000000")[0]
-    vendorwps = hex(
-        "0050f204104a000110103a000100100800023148104700106876989b82e8525788e06f19ccfcd79e105400080000000000000000103c00010310020002000010090002000010120002000010210001201023000120102400012010110001201049000600372a000120")[
-        0]
-
     #0802 # 0050f204104a000110103a000100100800023148104700106876989b82e8525788e06f19ccfcd79e105400080000000000000000103c00010310020002000010090002000010120002000010210001201023000120102400012010110001201049000600372a000120
 
     #0806 # 0050f204104a000110103a000100100800023148104700106876989b82e8525788e06f19ccfcd79e105400080000000000000000103c00010310020002000010090002000010120002000010210001201023000120102400012010110001201049000600372a000120
+    vendorwps = hex(
+        "0050f204104a000110103a000100100800023148104700106876989b82e8525788e06f19ccfcd79e105400080000000000000000103c00010310020002000010090002000010120002000010210001201023000120102400012010110001201049000600372a000120")[
+        0]
 
     #0802 # 506f9a0902020025000605005858045101
     #0806 # 506f9a0902020025000605005858045101
@@ -250,7 +253,7 @@ def isAlive(alive):
     if state-1 == 2:
         packetState = "asso packet"
     if alive:
-        print("fuzz false in state " + str(state) + packetState)
+        print("fuzz false in state " + str(state-1) + packetState)
         mutateList.clear()
         return False
     else:
@@ -273,15 +276,15 @@ while True:
     testPacket = packetSetting(state)
     seedPacket = packetSetting(state)
     sendp(testPacket, iface="wlx909f330d5fd9", verbose=3)
-    for i in range(50):
+    for i in range(100):
         fuzz(testPacket, state)
         time.sleep(0.2)
-    # hexdump(seedPacket)
-    sendp(seedPacket, iface="wlx909f330d5fd9", verbose=3, count=5)
+    sendp(seedPacket, iface="wlx909f330d5fd9", verbose=3, count=3)
 
-    print("waiting packet")
+    print("waiting packet at state : " + str(state))
 
-    # time.sleep(10)
-    sniff(iface="wlx909f330d5fd9", prn=packet_handler, timeout=20)
+    sniff(iface="wlx909f330d5fd9", prn=packet_handler, timeout=10)
+    if(state == 2):
+        triger = True
     if isAlive(alive) or state == 3:
         break
