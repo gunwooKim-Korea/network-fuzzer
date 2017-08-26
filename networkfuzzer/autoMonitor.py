@@ -145,8 +145,8 @@ def packetSetting(state, targetAP, lan) :
                     addr3=BSSId, \
                     SC=288)
 
-    DA = KUAP
-    BSSId = KUAP
+    DA = targetAP
+    BSSId = targetAP
     authhead = Dot11(type=0, \
                      subtype=11, \
                      proto=0, \
