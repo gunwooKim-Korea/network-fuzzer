@@ -89,6 +89,7 @@ def mutate_packet(pkt, state, lan):
 
 # wlp1s0
 # wlx909f330d5fd9
+i = 0
 
 def packet_handler(pkt) :
 
@@ -96,23 +97,25 @@ def packet_handler(pkt) :
     global state
     global lan2
     global KUAP
-
+    global triger
+    # print("here??")
     # print(lan2.getclass)
     # if packet has 802.11 layer
     if pkt.haslayer(Dot11):
         dot11 = pkt.getlayer(Dot11)
+        # print("here??")
         if dot11.type == 0 :
-            if dot11.addr2 == KUAP and (dot11.addr1 == "a0:d3:7a:21:17:1d"):
-                dot11.show()
+            if dot11.addr2 == sys.argv[3] and (dot11.addr1 == lan2):
+                # dot11.show()
                 if state == 0 and dot11.subtype == 5 :
                     state = 1
                     alive = True
                 if state == 1 and dot11.subtype == 11:
                     state = 2
                     alive = True
-                if state == 2 and (dot11.subtype == 13):
-                    state = 3
-                    alive = True
+                # if state == 2 and (dot11.subtype == 13):
+                #     state = 3
+                #     alive = True
         elif triger and dot11.type == 1 and state == 2 and  (dot11.subtype == 13):
             state = 3
             alive = True
@@ -248,25 +251,25 @@ def fuzzSuccess():
 
 def boundaryMinChk(pkt, state, lan):
 
-    returnPkt = pkt.getlayer(RadioTap2)
+    returnPkt = pkt
     # print("=============================================================================")
-    returnPkt[2] = b"0"
     # returnPkt[0].show()
     # print("=============================================================================")
     returnPkt.proto = 0
     returnPkt.FCfield = 0
     returnPkt.ID = 0
     returnPkt.SC = 0
-
     if (state == 0):
         # np.bytes(0)
+        returnPkt[3] = b"0"
+
         returnPkt = returnPkt/np.bytes(0)
         # mutatePrbElt = 0
         # returnPkt = radiohead/mutateDot11Body#/mutatePrbElt
 
     if (state == 1):
-
-        returnPkt = pkt.getlayer(Dot11Auth)
+        # returnPkt = pkt.getlayer(Dot11Auth)
+        # returnPkt[2] = b"0"
         returnPkt.algo = 0
         returnPkt.sequm = 0
         returnPkt.status = 0
@@ -276,20 +279,22 @@ def boundaryMinChk(pkt, state, lan):
 
     if (state == 2):
         # returnPkt = pkt.getlayer(Dot11AssoReq)
+        returnPkt[3] = b"0"
         returnPkt.cap = 0
         returnPkt.interval_listen = 0
         # mutateAssoElt = 0
 
         returnPkt = returnPkt/np.bytes(0)
 
+    returnPkt.show()
     sendp(returnPkt, iface=lan, count=3)
     mutateList.append(returnPkt)
 
 def boundaryMaxChk(pkt, state, lan):
-    returnPkt = pkt.getlayer(RadioTap2)
-    # print("=============================================================================")
-    returnPkt[2] = b"0"
-    # print("=============================================================================")
+    returnPkt = pkt#.getlayer(RadioTap2)
+    print("=============================================================================")
+    returnPkt.show()
+    print("=============================================================================")
 
     returnPkt.proto = 256**2 - 1
     returnPkt.FCfield = 256-1
@@ -297,11 +302,11 @@ def boundaryMaxChk(pkt, state, lan):
     returnPkt.SC = 256**2 - 1
 
     if (state == 0):
+        returnPkt[3] = b"0"
         mutatePrbElt = np.bytes(1514-424)
         returnPkt = returnPkt/mutatePrbElt
 
     if (state == 1):
-        returnPkt = pkt.getlayer(Dot11Auth)
         returnPkt.algo = 256**2 - 1
         returnPkt.sequm = 256**2 - 1
         returnPkt.status = 256**2 - 1
@@ -310,6 +315,8 @@ def boundaryMaxChk(pkt, state, lan):
         # returnPkt = radiohead/mutateDot11Body/mutateAuthBody
 
     if (state == 2):
+        returnPkt[3] = b"0"
+
         # returnPkt = pkt.getlayer(Dot11AssoReq)
         returnPkt.cap = 256**2 - 1
         returnPkt.interval_listen = 256**2 - 1
@@ -317,17 +324,12 @@ def boundaryMaxChk(pkt, state, lan):
 
         # returnPkt = radiohead/mutateDot11Body/mutateAssoBody/mutateAssoElt
 
-    # returnPkt.show()
-    print(lan)
+    returnPkt.show()
+    # print(lan)
     sendp(returnPkt, iface=lan, count=3)
     mutateList.append(returnPkt)
 
-
 if __name__ == "__main__":
-
-    triger = False
-    KUAP = "90:9f:33:e7:bf:38"
-    gggg = "88:36:6c:33:ad:7c"
 
     lan1 = open('/sys/class/net/%s/address' % sys.argv[1]).read()
     lan2 = open('/sys/class/net/%s/address' % sys.argv[2]).read()[:-1]
@@ -348,59 +350,82 @@ if __name__ == "__main__":
     os.system("sudo iwconfig " + monitorlan +" mode monitor")
     os.system("sudo ifconfig " + monitorlan + " up")
     os.system("sudo ifconfig " + notelan + " down")
-    os.system("iwconfig")
 
+    # triger = False
+    # while True:
+    #     alive = False
+    #     testPacket = packetSetting(state, sys.argv[3], lan2)
+    #     seedPacket = packetSetting(state, sys.argv[3], lan2)
+    #
+    #     boundaryMinChk(testPacket, state, monitorlan)
+    #
+    #     sendp(seedPacket, iface=monitorlan, count=2)
+    #     print("boundaryMinChk !")
+    #     print("waiting packet at state : " + str(state))
+    #
+    #     sniff(iface=monitorlan, prn=packet_handler, timeout=30)
+    #     if (state == 2):
+    #         triger = True
+    #     if isAlive(alive) or state == 3:
+    #         break
+    #
+    # print("here2")
+    #
+    # state = 0
+    # triger = False
+    #
+    # while True:
+    #
+    #     alive = False
+    #     testPacketMax = packetSetting(state, sys.argv[3], lan2)
+    #     seedPacketMax = packetSetting(state, sys.argv[3], lan2)
+    #
+    #     testPacketMax.show()
+    #
+    #     boundaryMaxChk(testPacketMax, state, monitorlan)
+    #
+    #     sendp(seedPacket, iface=monitorlan, count=2)
+    #     print("boundaryMaxChk !")
+    #     print("waiting packet at state : " + str(state))
+    #
+    #     sniff(iface=monitorlan, prn=packet_handler, timeout=30)
+    #
+    #     if (state == 2):
+    #         triger = True
+    #     if isAlive(alive) or state == 3:
+    #         break
+    # print("here1")
+    #
+    # state = 0
+
+    # 구동 코드
+
+    triger = False
     while True:
+
         alive = False
         testPacket = packetSetting(state, sys.argv[3], lan2)
         seedPacket = packetSetting(state, sys.argv[3], lan2)
 
-        boundaryMaxChk(testPacket, state, monitorlan)
+        start = time.time()
 
-        sendp(seedPacket, iface=monitorlan, count=2)
-
-        print("waiting packet at state : " + str(state))
-        sniff(iface=monitorlan, prn=packet_handler, timeout=30)
-
-        if (state == 2):
-            triger = True
-        if isAlive(alive) or state == 3:
-            break
-
-    while True:
-        alive = False
-        testPacket = packetSetting(state, sys.argv[3], lan2)
-        seedPacket = packetSetting(state, sys.argv[3], lan2)
-
-        boundaryMinChk(testPacket, state, monitorlan)
-
-        sendp(seedPacket, iface=monitorlan, count=2)
-
-        print("waiting packet at state : " + str(state))
-
-        sniff(iface=monitorlan, prn=packet_handler, timeout=30)
-        if (state == 2):
-            triger = True
-        if isAlive(alive) or state == 3:
-            break
-
-
-    while True:
-        alive = False
-        testPacket = packetSetting(state, sys.argv[3], lan2)
-        seedPacket = packetSetting(state, sys.argv[3], lan2)
-
-        for i in range(10):
+        for i in range(101):
             fuzz(testPacket, state, monitorlan)
             time.sleep(0.2)
-        sendp(seedPacket, iface=monitorlan, verbose=3, count=3)
+            if i == 100:
+                print(str(i)+" packet send ")
+
+        end = time.time() - start
+        print(end)
+        sendp(seedPacket, iface=monitorlan, count=3)
 
         print("waiting packet at state : " + str(state))
 
-        sniff(iface=monitorlan, prn=packet_handler, timeout=10)
+        sniff(iface=monitorlan, prn=packet_handler, timeout=30)
         if (state == 2):
             triger = True
         if isAlive(alive) or state == 3:
             break
+
     os.system("sudo ifconfig " + notelan + " up")
     # subprocess.call("toor")
